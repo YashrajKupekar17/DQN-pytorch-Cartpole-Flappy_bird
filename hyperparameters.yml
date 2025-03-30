@@ -10,3 +10,4 @@ cartpole1:
   discount_factor_g: 0.99
   stop_on_reward : 100000
   fc1_nodes : 10
+  enable_double_dqn: True

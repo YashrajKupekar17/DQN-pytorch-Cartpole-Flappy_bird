@@ -53,6 +53,7 @@ class Agent:
         self.stop_on_reward = hyperparameters['stop_on_reward']
         self.fc1_nodes = hyperparameters['fc1_nodes']
 
+        self.enable_double_dqn = hyperparameters['enable_double_dqn']
         # Path to Run info
         self.LOG_FILE   = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.log')
         self.MODEL_FILE = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.pt')
@@ -220,9 +221,17 @@ class Agent:
         rewards = torch.stack(batch_rewards)
         new_states = torch.stack(batch_next_states)
         terminations = torch.tensor(batch_terminations, dtype=torch.float, device=device)
+
         with torch.no_grad():
-            # Calculate target Q values (expected returns)
-            target_q = rewards + (1-terminations) * self.discount_factor_g * target_dqn(new_states).max(dim=1)[0]
+            if self.enable_double_dqn:
+                #first get the actions from policy network
+                best_actions_from_policy = policy_dqn(new_states).argmax(dim=1)
+                
+                #then get the Q values from target network
+                target_q = rewards + (1-terminations) * self.discount_factor_g * target_dqn(new_states).gather(dim=1,index=best_actions_from_policy.unsqueeze(dim=1)).squeeze()
+            else:
+                # Calculate target Q values (expected returns)
+                target_q = rewards + (1-terminations) * self.discount_factor_g * target_dqn(new_states).max(dim=1)[0]
 
 
         current_q = policy_dqn(states).gather(dim=1,index=actions.unsqueeze(dim=1)).squeeze()
