@@ -307,7 +307,7 @@ class Agent:
                     (10, 30),  # Position (x, y) from top-left
                     cv2.FONT_HERSHEY_SIMPLEX,  # Font
                     1,  # Font scale
-                    (255, 255, 255),  # Color (white)
+                    (0, 0, 0),  # Color (white)
                     2,  # Thickness
                     cv2.LINE_AA  # Line type
                 )
@@ -319,7 +319,7 @@ class Agent:
                     (10, 70),  # Position below score
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
-                    (255, 255, 255),
+                    (0, 0, 0),
                     2,
                     cv2.LINE_AA
                 )
