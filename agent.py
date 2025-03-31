@@ -13,7 +13,11 @@ import argparse
 import itertools
 import flappy_bird_gymnasium
 import os
-
+from gymnasium.wrappers import RecordVideo
+import imageio
+import numpy as np
+import time
+import cv2
 
 # For printing date and time
 DATE_FORMAT = "%m-%d %H:%M:%S"
@@ -54,6 +58,7 @@ class Agent:
         self.fc1_nodes = hyperparameters['fc1_nodes']
 
         self.enable_double_dqn = hyperparameters['enable_double_dqn']
+        self.enable_dueling_dqn = hyperparameters['enable_dueling_dqn']
         # Path to Run info
         self.LOG_FILE   = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.log')
         self.MODEL_FILE = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.pt')
@@ -71,11 +76,13 @@ class Agent:
         # Create instance of the environment.
         # Use "**self.env_make_params" to pass in environment-specific parameters from hyperparameters.yml.
         env = gymnasium.make(self.env_id, render_mode='human' if render else None, **self.env_make_params)
+        
+
 
         num_states = env.observation_space.shape[0]
         num_actions = env.action_space.n
 
-        policy_dqn = DQN(num_states, num_actions, self.fc1_nodes).to(device)
+        policy_dqn = DQN(num_states, num_actions, self.fc1_nodes, self.enable_dueling_dqn).to(device)
         
         reward_per_episode = []
         
@@ -87,7 +94,7 @@ class Agent:
 
             epsilon = self.epsilon_init
 
-            target_dqn = DQN(num_states, num_actions, self.fc1_nodes).to(device)
+            target_dqn = DQN(num_states, num_actions, self.fc1_nodes, self.enable_dueling_dqn).to(device)
             target_dqn.load_state_dict(policy_dqn.state_dict()) # Initialize target network with same weights as policy network
 
             # Policy network optimizer. "Adam" optimizer can be swapped to something else.
@@ -245,11 +252,116 @@ class Agent:
         self.optimizer.step()  # Update parameters
 
 
+
+    def run_with_recording(self, is_training=False, record_video=True):
+        """Run the agent and record video while showing gameplay in a window with score overlay"""
+        
+        # Set up video recording
+        if record_video:
+            video_folder = os.path.join(RUNS_DIR, f"{self.hyperparameter_set}_videos")
+            os.makedirs(video_folder, exist_ok=True)
+            video_path = os.path.join(video_folder, f"{self.hyperparameter_set}_episode_{int(time.time())}.mp4")
+        
+        # Create environment with rgb_array rendering
+        env = gymnasium.make(self.env_id, render_mode='rgb_array', **self.env_make_params)
+        
+        # Load model for testing
+        policy_dqn = DQN(env.observation_space.shape[0], env.action_space.n, 
+                        self.fc1_nodes, self.enable_dueling_dqn).to(device)
+        policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
+        policy_dqn.eval()
+        
+        # Set up video writer
+        video_writer = None
+        
+        for episode in range(5):  # Run 5 episodes
+            state, _ = env.reset()
+            state = torch.tensor(state, dtype=torch.float, device=device)
+            terminated = False
+            
+            episode_reward = 0.0
+            score = 0  # Track the score (number of pipes passed)
+            
+            while not terminated and episode_reward < self.stop_on_reward:
+                # Get action from policy
+                with torch.no_grad():
+                    action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
+                
+                # Take action in environment
+                new_state, reward, terminated, _, info = env.step(action.item())
+                
+                # Update score (assuming reward of 1.0 is given when passing a pipe)
+                if reward == 1.0:
+                    score += 1
+                
+                # Render frame
+                frame = env.render()
+                
+                # Convert RGB to BGR (OpenCV uses BGR)
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                
+                # Add score text to the frame
+                cv2.putText(
+                    frame_bgr, 
+                    f"Score: {score}", 
+                    (10, 30),  # Position (x, y) from top-left
+                    cv2.FONT_HERSHEY_SIMPLEX,  # Font
+                    1,  # Font scale
+                    (255, 255, 255),  # Color (white)
+                    2,  # Thickness
+                    cv2.LINE_AA  # Line type
+                )
+                
+                # Add episode reward text
+                cv2.putText(
+                    frame_bgr,
+                    f"Reward: {episode_reward:.1f}",
+                    (10, 70),  # Position below score
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA
+                )
+                
+                # Display frame
+                cv2.imshow('Flappy Bird', frame_bgr)
+                cv2.waitKey(1)  # This is necessary to update the window
+                
+                # Initialize video writer if not already created
+                if record_video and video_writer is None:
+                    height, width, layers = frame_bgr.shape
+                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use mp4v codec
+                    video_writer = cv2.VideoWriter(video_path, fourcc, 30.0, (width, height))
+                
+                # Write frame to video
+                if record_video:
+                    video_writer.write(frame_bgr)
+                
+                # Convert to tensor for next iteration
+                new_state = torch.tensor(new_state, dtype=torch.float, device=device)
+                reward = torch.tensor(reward, dtype=torch.float, device=device)
+                episode_reward += reward
+                
+                # Move to next state
+                state = new_state
+            
+            print(f"Episode {episode} finished with reward {episode_reward}, score: {score}")
+        
+        # Clean up
+        if record_video and video_writer is not None:
+            video_writer.release()
+            print(f"Video saved to {video_path}")
+        
+        cv2.destroyAllWindows()
+        env.close()
+
 if __name__ == "__main__":
     # Parse command line inputs
     parser = argparse.ArgumentParser(description='Train or test model.')
-    parser.add_argument('hyperparameters', help='')
+    parser.add_argument('hyperparameters', help='Hyperparameter set to use')
     parser.add_argument('--train', help='Training mode', action='store_true')
+    parser.add_argument('--record', help='Record video (only in test mode)', action='store_true')
     args = parser.parse_args()
 
     dql = Agent(hyperparameters_set=args.hyperparameters)
@@ -257,4 +369,7 @@ if __name__ == "__main__":
     if args.train:
         dql.run(is_training=True)
     else:
-        dql.run(is_training=False, render=True)
+        if args.record:
+            dql.run_with_recording(is_training=False, record_video=True)
+        else:
+            dql.run(is_training=False, render=True)
