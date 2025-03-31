@@ -149,7 +149,9 @@ The implementation achieves:
 - **CartPole-v1**: Solves the environment (average reward of 475+ over 100 consecutive episodes)
 - **FlappyBird-v0**: Agent learns to navigate through pipes and achieve high scores
 
-
+## Enviroments 
+-  **CartPole-v1**: https://www.gymlibrary.dev/environments/classic_control/cart_pole/
+- **FlappyBird-v0**: https://github.com/Talendar/flappy-bird-gym
 ## Resource limitations 
 
 Due to limited computational resources, I was unable to train FlappyBird for an extended period. I got the model from (https://github.com/johnnycode8/dqn_pytorch)
@@ -161,6 +163,7 @@ Due to limited computational resources, I was unable to train FlappyBird for an 
 - Add Noisy Networks for better exploration
 - Integrate Rainbow DQN combining multiple improvements
 - Implement hyperparameter optimization
+
 
 
 
