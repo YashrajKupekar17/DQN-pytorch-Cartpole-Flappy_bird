@@ -2,6 +2,12 @@
 
 This repository contains a PyTorch implementation of various Deep Q-Network (DQN) algorithms applied to the CartPole and FlappyBird environments. The implementation includes vanilla DQN, Double DQN, and Dueling DQN architectures from scratch.
 
+#### FlappyBird-v0 
+![FlappyBird Training](https://github.com/YashrajKupekar17/DQN-pytorch-Cartpole-Flappy_bird/blob/main/assets%20/flappybird1-gif.gif)
+#### CartPole-v1 
+![CartPole Training](https://github.com/YashrajKupekar17/DQN-pytorch-Cartpole-Flappy_bird/blob/main/assets%20/cartpole1-gif-converter.gif)
+
+
 ## Overview
 
 Reinforcement Learning (RL) is a machine learning paradigm where an agent learns to make decisions by interacting with an environment. Deep Q-Networks combine deep learning with Q-learning to create agents capable of learning complex behaviors directly from high-dimensional sensory inputs.
@@ -143,13 +149,6 @@ The implementation achieves:
 - **CartPole-v1**: Solves the environment (average reward of 475+ over 100 consecutive episodes)
 - **FlappyBird-v0**: Agent learns to navigate through pipes and achieve high scores
 
-### Performance Visualizations
-
-#### CartPole-v1 Training GIF
-![CartPole Training](assets/cartpole1-gif-converter.gif)
-
-#### FlappyBird-v0 Training GIF
-![FlappyBird Training](assets/flappybird1-gif.gif)
 
 ## Resource limitations 
 
@@ -162,4 +161,6 @@ Due to limited computational resources, I was unable to train FlappyBird for an 
 - Add Noisy Networks for better exploration
 - Integrate Rainbow DQN combining multiple improvements
 - Implement hyperparameter optimization
+
+
 
